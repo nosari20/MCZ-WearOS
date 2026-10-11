@@ -13,7 +13,7 @@
 ./gradlew :app:bundleRelease                # Play upload (.aab); see docs/google-play.md
 ```
 
-- Toolchain: AGP 9 (built-in Kotlin), Gradle 9.5, minSdk 33, compileSdk/targetSdk 37,
+- Toolchain: AGP 9 (built-in Kotlin), Gradle 9.8, minSdk 33, compileSdk/targetSdk 37,
   versions in `gradle/libs.versions.toml`.
 - On Windows run Gradle with the Android Studio JBR:
   `export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"` (Git Bash).
