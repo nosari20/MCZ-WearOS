@@ -24,13 +24,13 @@ jobs:
       - name: Unit tests and debug build
         run: ./gradlew :app:testDebugUnitTest :app:assembleDebug
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-reports
           path: app/build/reports/tests/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
