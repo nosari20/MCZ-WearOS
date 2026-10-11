@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew :app:testDebugUnitTest:*)",
+      "Bash(./gradlew :app:assembleDebug:*)",
+      "Bash(./gradlew :app:assembleRelease:*)",
+      "Bash(./gradlew --stop)",
+      "Bash(adb devices:*)",
+      "Bash(adb mdns services)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ]
+  }
+}

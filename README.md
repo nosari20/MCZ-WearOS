@@ -35,8 +35,11 @@ over **Bluetooth Low Energy**. No phone, no MCZ cloud, no account.
 ## Build and install
 
 ```bash
-./gradlew :app:testDebugUnitTest :app:assembleDebug
+./gradlew :app:testDebugUnitTest :app:assembleRelease
 ```
+
+Use the **release** build on a watch: debug builds of Compose for Wear OS scroll noticeably
+worse. The release APK is signed with your local debug key, which is fine for sideloading.
 
 Install on the watch with wireless debugging (watch: *Settings → Developer options →
 Wireless debugging*):
@@ -44,7 +47,7 @@ Wireless debugging*):
 ```bash
 adb pair <watch-ip>:<pairing-port> <pairing-code>
 adb connect <watch-ip>:<debug-port>
-adb -s <watch-ip>:<debug-port> install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s <watch-ip>:<debug-port> install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 ## First pairing
@@ -54,8 +57,12 @@ adb -s <watch-ip>:<debug-port> install -r app/build/outputs/apk/debug/app-debug.
 2. Open the app on the watch, grant the Bluetooth permission and pick the `MCZ_EP…` stove.
 3. Accept the system pairing prompt if one appears.
 
+The stove refuses connections from devices it is not paired with, and accepts a new pairing
+only while the Bluetooth icon blinks. If pairing fails, put the panel back in pairing mode and
+pick the stove again.
+
 The stove module most likely accepts a single Bluetooth client at a time: close the official
-app while using the watch.
+app while using the watch. The watch releases the link after 30 s without activity.
 
 Debug builds also offer a **Demo stove** on the pairing screen: a simulated stove used to try
 the UI on an emulator, which has no Bluetooth.
@@ -110,4 +117,4 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and the
 
 ## License
 
-[Apache License 2.0](LICENSE)
+[Apache License 2.0](LICENSE) — see also [NOTICE](NOTICE). Changes are listed in [CHANGELOG.md](CHANGELOG.md).

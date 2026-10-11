@@ -6,3 +6,4 @@ local.properties
 *.iml
 captures/
 .superpowers/
+.claude/settings.local.json

@@ -1,0 +1,12 @@
+MCZ WearOS
+Copyright 2026 Florent Nosari and contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The Maestro BLE protocol knowledge used here (frame format, AES key/IV/token constants,
+Modbus register map) comes from the public reverse-engineering work in
+https://github.com/Houtmann/mcz-maestro-ble and its upstream project. No code from those
+projects is included; the protocol is reimplemented independently.
+
+MCZ and Maestro are trademarks of their respective owners. This project is not affiliated
+with or endorsed by MCZ Group.
