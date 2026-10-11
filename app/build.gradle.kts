@@ -19,7 +19,11 @@ android {
 
     buildTypes {
         release {
-            // Sideloaded to the owner's watch only.
+            // R8 + non-debuggable: Compose for Wear is noticeably laggy in debug builds.
+            optimization {
+                enable = true
+            }
+            // Sideloaded builds; replace with a real key before publishing to a store.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

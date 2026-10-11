@@ -4,6 +4,7 @@ import com.mczadvanced.wear.protocol.Registers
 import com.mczadvanced.wear.protocol.StoveMode
 import com.mczadvanced.wear.protocol.StoveState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -152,6 +153,84 @@ class StoveRepositoryTest {
         fake.broadcasts.emit(mapOf(Registers.ROOM_TEMP to 230))
         runCurrent()
         assertEquals(23.0f, repo.state.value.stove.roomTemp)
+    }
+
+    @Test
+    fun `no toggle while the stove is turning off`() = runTest {
+        val repo = repo()
+        fake.registers[Registers.PHASE] = 3
+        fake.registers[Registers.STATE] = StoveState.TURNING_OFF
+        assertTrue(repo.setOn(false))  // already going off: nothing to do
+        assertFalse(repo.setOn(true))  // re-igniting mid shutdown is refused
+        assertTrue(fake.writes.isEmpty())
+        assertEquals("Stove is turning off", repo.state.value.error)
+        assertEquals(LinkStatus.CONNECTED, repo.state.value.link)
+    }
+
+    @Test
+    fun `unknown phase is refused`() = runTest {
+        val repo = repo()
+        fake.registers[Registers.PHASE] = 2
+        assertFalse(repo.setOn(true))
+        assertFalse(repo.setOn(false))
+        assertTrue(fake.writes.isEmpty())
+    }
+
+    @Test
+    fun `second toggle within cooldown is refused`() = runTest {
+        val repo = repo()
+        assertTrue(repo.setOn(true))
+        fake.registers[Registers.PHASE] = Registers.PHASE_OFF  // stove still reports off (lag)
+        advanceTimeBy(10_000)
+        assertFalse(repo.setOn(true))
+        assertEquals(1, fake.writes.size)
+        advanceTimeBy(60_000)
+        assertTrue(repo.setOn(true))
+        assertEquals(2, fake.writes.size)
+    }
+
+    @Test
+    fun `cancelled connect closes the transport`() = runTest {
+        val repo = repo()
+        fake.hangConnect = true
+        val job = launch { repo.refresh() }
+        runCurrent()
+        job.cancel()
+        runCurrent()
+        assertEquals(1, fake.closes)
+        fake.hangConnect = false
+        assertTrue(repo.refresh())
+    }
+
+    @Test
+    fun `dropped link is reopened before the next command`() = runTest {
+        val repo = repo()
+        repo.refresh()
+        fake.connected = false  // stove went out of range while idle
+        assertTrue(repo.setMode(StoveMode.AUTO))
+        assertEquals(2, fake.connects)
+        assertEquals(listOf(Registers.MODE to 1), fake.writes)
+    }
+
+    @Test
+    fun `unexpected exception is reported as unreachable`() = runTest {
+        val repo = repo(factory = { throw IllegalStateException("datastore broken") })
+        assertFalse(repo.refresh())
+        val ui = repo.state.value
+        assertEquals(LinkStatus.UNREACHABLE, ui.link)
+        assertFalse(ui.busy)
+    }
+
+    @Test
+    fun `refreshIfStale skips fresh data`() = runTest {
+        val repo = repo()
+        repo.refresh()
+        advanceTimeBy(5_000)
+        repo.refreshIfStale(10_000)
+        assertEquals(3, fake.reads.size)
+        advanceTimeBy(10_000)
+        repo.refreshIfStale(10_000)
+        assertEquals(6, fake.reads.size)
     }
 
     @Test

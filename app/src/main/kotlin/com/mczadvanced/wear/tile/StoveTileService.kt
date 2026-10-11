@@ -81,7 +81,15 @@ class StoveTileService : TileService() {
                     },
                     bottomSlot = {
                         textEdgeButton(onClick = clickable(confirmPower, ID_POWER)) {
-                            text(LayoutString(if (ui.stove.isOn == true) "Turn off" else "Turn on"))
+                            text(
+                                LayoutString(
+                                    when {
+                                        !ui.stove.canToggle -> "Open"
+                                        ui.stove.isOn == true -> "Turn off"
+                                        else -> "Turn on"
+                                    },
+                                ),
+                            )
                         }
                     },
                 )
@@ -103,7 +111,7 @@ class StoveTileService : TileService() {
     private fun refreshInBackground() {
         val app = StoveApp.get(this)
         app.appScope.launch {
-            app.repository.refresh()
+            app.repository.refreshIfStale(MIN_REFRESH_INTERVAL_MS)
             TileService.getUpdater(app).requestUpdate(StoveTileService::class.java)
         }
     }
@@ -118,5 +126,8 @@ class StoveTileService : TileService() {
         const val RESOURCES_VERSION = "1"
         const val ID_REFRESH = "refresh"
         const val ID_POWER = "power"
+
+        /** Debounce: an update request after a refresh must not trigger another refresh. */
+        const val MIN_REFRESH_INTERVAL_MS = 10_000L
     }
 }

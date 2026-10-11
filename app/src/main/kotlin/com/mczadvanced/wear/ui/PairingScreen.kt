@@ -26,9 +26,11 @@ import androidx.wear.compose.material3.Text
 import com.mczadvanced.wear.BuildConfig
 import com.mczadvanced.wear.StoveApp
 import com.mczadvanced.wear.ble.FoundStove
+import com.mczadvanced.wear.ble.StoveBonding
 import com.mczadvanced.wear.ble.StoveScanner
 import com.mczadvanced.wear.data.DemoStoveTransport
 import com.mczadvanced.wear.data.SavedStove
+import com.mczadvanced.wear.data.StoveException
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -47,6 +49,7 @@ fun PairingScreen(
     var round by remember { mutableIntStateOf(0) }
     var scanning by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var pairing by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(round, permissionsGranted) {
         if (!permissionsGranted) return@LaunchedEffect
@@ -62,9 +65,19 @@ fun PairingScreen(
     }
 
     fun pick(stove: SavedStove) = scope.launch {
-        app.repository.reset()
-        app.settings.save(stove)
-        onPaired()
+        if (pairing != null) return@launch
+        pairing = stove.name
+        error = null
+        try {
+            if (stove.address != DemoStoveTransport.ADDRESS) StoveBonding(context).bond(stove.address)
+            app.repository.reset()
+            app.settings.save(stove)
+            onPaired()
+        } catch (e: StoveException) {
+            error = e.message
+        } finally {
+            pairing = null
+        }
     }
 
     ScreenScaffold(scrollState = listState) { padding ->
@@ -94,6 +107,7 @@ fun PairingScreen(
                 item {
                     Text(
                         when {
+                            pairing != null -> "Pairing with $pairing… accept the prompt if one appears"
                             error != null -> error!!
                             scanning -> "Scanning…"
                             found.isEmpty() -> "No stove found"

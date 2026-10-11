@@ -14,6 +14,7 @@ object Registers {
     const val FAN = 0x03FA           // 1..5, 6 = auto
 
     const val PHASE_OFF = 1
+    const val PHASE_ON = 3
     const val FAN_AUTO = 6
     const val SETPOINT_MIN = 5f
     const val SETPOINT_MAX = 45f

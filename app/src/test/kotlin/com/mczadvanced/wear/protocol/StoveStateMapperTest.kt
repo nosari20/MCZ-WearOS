@@ -47,6 +47,22 @@ class StoveStateMapperTest {
     }
 
     @Test
+    fun `turning off counts as off and cannot be toggled`() {
+        val s = StoveState(phase = 3, stateCode = StoveState.TURNING_OFF)
+        assertEquals(false, s.isOn)
+        assertFalse(s.canToggle)
+    }
+
+    @Test
+    fun `unknown phase is neither on nor off`() {
+        val s = StoveState(phase = 2)
+        assertNull(s.isOn)
+        assertFalse(s.canToggle)
+        assertTrue(StoveState(phase = 3).canToggle)
+        assertTrue(StoveState(phase = Registers.PHASE_OFF).canToggle)
+    }
+
+    @Test
     fun `labels fall back when unknown`() {
         assertEquals("--", StoveState().stateLabel)
         assertEquals("On", StoveState(phase = 3, stateCode = 0x7777).stateLabel)

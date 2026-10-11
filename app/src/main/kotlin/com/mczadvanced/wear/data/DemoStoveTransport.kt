@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.emptyFlow
 /** Simulated stove for the emulator (no BLE there). Selected by pairing the "DEMO" address. */
 class DemoStoveTransport : StoveTransport {
     override val broadcasts: Flow<Map<Int, Int>> = emptyFlow()
+    override val isConnected = true
 
     override suspend fun connect() = delay(600)
 

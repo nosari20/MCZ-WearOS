@@ -4,8 +4,10 @@ import com.mczadvanced.wear.protocol.Registers
 import com.mczadvanced.wear.protocol.StoveMode
 import com.mczadvanced.wear.protocol.StoveState
 import com.mczadvanced.wear.protocol.StoveStateMapper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 enum class LinkStatus { IDLE, CONNECTING, CONNECTED, UNREACHABLE }
@@ -33,6 +36,9 @@ interface StoveCache {
     suspend fun save(value: CachedStove)
 }
 
+/** The stove is reachable but the command is not safe to send right now. */
+private class CommandRefused(message: String) : Exception(message)
+
 /**
  * Single source of truth for the stove. Opens the link on demand, serializes every exchange,
  * and closes the link after [idleTimeoutMs] so the official app can connect too.
@@ -43,6 +49,7 @@ class StoveRepository(
     private val scope: CoroutineScope,
     private val clock: () -> Long = System::currentTimeMillis,
     private val idleTimeoutMs: Long = 30_000,
+    private val toggleCooldownMs: Long = 60_000,
 ) {
     private val _state = MutableStateFlow(StoveUiState())
     val state: StateFlow<StoveUiState> = _state.asStateFlow()
@@ -52,11 +59,12 @@ class StoveRepository(
     private var broadcastJob: Job? = null
     private var idleJob: Job? = null
     private var cacheLoaded = false
+    private var lastToggleAt: Long? = null
 
     suspend fun loadCache() {
         if (cacheLoaded) return
         cacheLoaded = true
-        val cached = cache.load() ?: return
+        val cached = runCatching { cache.load() }.getOrNull() ?: return
         _state.update { if (it.updatedAt == null) it.copy(stove = cached.state, updatedAt = cached.updatedAt) else it }
     }
 
@@ -64,11 +72,35 @@ class StoveRepository(
         for ((start, count) in Registers.POLL_BLOCKS) poll(t, start, count)
     }
 
-    /** The power register is a toggle: the phase is read in the same session right before writing. */
+    /** Refreshes unless a refresh is running or the data is younger than [maxAgeMs]. */
+    suspend fun refreshIfStale(maxAgeMs: Long) {
+        val ui = _state.value
+        val age = ui.updatedAt?.let { clock() - it }
+        if (ui.busy || (age != null && age < maxAgeMs && ui.link != LinkStatus.UNREACHABLE)) return
+        refresh()
+    }
+
+    /**
+     * The power register is a toggle. State and phase are read in the same session right before
+     * writing, only stable states are toggled, and a second toggle is refused while the stove may
+     * still be reacting to the first one.
+     */
     suspend fun setOn(on: Boolean): Boolean = session { t ->
-        val phase = t.readRegisters(Registers.PHASE, 1).single()
-        apply(mapOf(Registers.PHASE to phase))
-        if ((phase != Registers.PHASE_OFF) != on) {
+        poll(t, Registers.STATE, Registers.PHASE - Registers.STATE + 1)
+        val stove = _state.value.stove
+        val shouldToggle = when {
+            stove.stateCode == StoveState.TURNING_OFF ->
+                if (on) throw CommandRefused("Stove is turning off") else false
+            stove.phase == Registers.PHASE_OFF -> on
+            stove.phase == Registers.PHASE_ON -> !on
+            else -> throw CommandRefused("Stove is busy (phase ${stove.phase})")
+        }
+        if (shouldToggle) {
+            val last = lastToggleAt
+            if (last != null && clock() - last < toggleCooldownMs) {
+                throw CommandRefused("Wait for the stove to respond")
+            }
+            lastToggleAt = clock()
             t.writeRegister(Registers.POWER_TOGGLE, 1)
             poll(t, Registers.STATE_BLOCK.first, Registers.STATE_BLOCK.second)
         }
@@ -93,6 +125,7 @@ class StoveRepository(
         lock.withLock {
             idleJob?.cancel()
             closeTransport()
+            lastToggleAt = null
             _state.value = StoveUiState()
         }
     }
@@ -107,13 +140,25 @@ class StoveRepository(
         idleJob?.cancel()
         _state.update { it.copy(busy = true, error = null) }
         try {
+            if (transport?.isConnected == false) closeTransport()
             block(transport ?: open())
             _state.update { it.copy(link = LinkStatus.CONNECTED) }
-            cache.save(CachedStove(_state.value.stove, _state.value.updatedAt ?: clock()))
+            persist()
             true
+        } catch (e: CommandRefused) {
+            _state.update { it.copy(link = LinkStatus.CONNECTED, error = e.message) }
+            false
         } catch (e: StoveException) {
             closeTransport()
             _state.update { it.copy(link = LinkStatus.UNREACHABLE, error = e.message) }
+            false
+        } catch (e: CancellationException) {
+            // The link may be mid-exchange: drop it rather than leave the stove's only slot busy.
+            closeTransport()
+            throw e
+        } catch (e: Exception) {
+            closeTransport()
+            _state.update { it.copy(link = LinkStatus.UNREACHABLE, error = "Unexpected error: ${e.message}") }
             false
         } finally {
             _state.update { it.copy(busy = false) }
@@ -126,15 +171,15 @@ class StoveRepository(
         val t = transportFactory() ?: throw StoveException("No stove paired")
         try {
             t.connect()
-        } catch (e: StoveException) {
-            runCatching { t.close() }
+        } catch (e: Throwable) {
+            withContext(NonCancellable) { runCatching { t.close() } }
             throw e
         }
         transport = t
         broadcastJob = scope.launch {
             t.broadcasts.collect { registers ->
                 apply(registers)
-                cache.save(CachedStove(_state.value.stove, clock()))
+                persist()
             }
         }
         return t
@@ -146,6 +191,11 @@ class StoveRepository(
 
     private fun apply(registers: Map<Int, Int>) {
         _state.update { it.copy(stove = StoveStateMapper.apply(it.stove, registers), updatedAt = clock()) }
+    }
+
+    private suspend fun persist() {
+        val ui = _state.value
+        runCatching { cache.save(CachedStove(ui.stove, ui.updatedAt ?: clock())) }
     }
 
     private fun scheduleIdle() {
@@ -160,7 +210,8 @@ class StoveRepository(
     private suspend fun closeTransport() {
         broadcastJob?.cancel()
         broadcastJob = null
-        transport?.let { runCatching { it.close() } }
+        val t = transport ?: return
         transport = null
+        withContext(NonCancellable) { runCatching { t.close() } }
     }
 }

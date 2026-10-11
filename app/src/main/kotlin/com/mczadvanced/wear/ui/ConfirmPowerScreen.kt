@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -17,6 +20,7 @@ import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 import com.mczadvanced.wear.StoveApp
 import com.mczadvanced.wear.data.LinkStatus
+import com.mczadvanced.wear.protocol.StoveState
 import kotlinx.coroutines.launch
 
 /** Explicit confirmation before toggling, also the target of the tile's power button. */
@@ -26,9 +30,13 @@ fun ConfirmPowerScreen(app: StoveApp, onDone: () -> Unit) {
     val listState = rememberScalingLazyListState()
     val isOn = ui.stove.isOn
 
+    var submitted by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
-        app.repository.loadCache()
-        app.repository.refresh()
+        app.appScope.launch {
+            app.repository.loadCache()
+            app.repository.refresh()
+        }
     }
 
     ScreenScaffold(scrollState = listState) { padding ->
@@ -38,7 +46,9 @@ fun ConfirmPowerScreen(app: StoveApp, onDone: () -> Unit) {
                     Text(
                         when {
                             isOn == null && ui.link == LinkStatus.UNREACHABLE -> ui.error ?: "Unreachable"
-                            isOn == null -> "Connecting…"
+                            ui.stove.stateCode == StoveState.TURNING_OFF -> "Stove is turning off"
+                            isOn == null && ui.busy -> "Connecting…"
+                            isOn == null -> "Stove is busy"
                             isOn -> "Turn stove off?"
                             else -> "Turn stove on?"
                         },
@@ -49,11 +59,14 @@ fun ConfirmPowerScreen(app: StoveApp, onDone: () -> Unit) {
             item {
                 Button(
                     onClick = {
-                        val target = isOn == false
-                        app.appScope.launch { app.repository.setOn(target) }
-                        onDone()
+                        if (!submitted) {
+                            submitted = true
+                            val target = isOn == false
+                            app.appScope.launch { app.repository.setOn(target) }
+                            onDone()
+                        }
                     },
-                    enabled = isOn != null && !ui.busy,
+                    enabled = ui.stove.canToggle && !ui.busy && !submitted,
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(if (isOn == true) "Turn off" else "Turn on") },
                 )

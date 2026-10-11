@@ -24,7 +24,17 @@ data class StoveState(
     val fan: Int? = null,
     val alarm: Int? = null,
 ) {
-    val isOn: Boolean? get() = phase?.let { it != Registers.PHASE_OFF }
+    /** True when burning, false when off or shutting down, null when unknown or transitional. */
+    val isOn: Boolean?
+        get() = when {
+            stateCode == TURNING_OFF -> false
+            phase == Registers.PHASE_OFF -> false
+            phase == Registers.PHASE_ON -> true
+            else -> null
+        }
+
+    /** The power toggle is only offered in a stable, known state. */
+    val canToggle: Boolean get() = isOn != null && stateCode != TURNING_OFF
 
     val stateLabel: String
         get() = stateCode?.let { STATE_LABELS[it] } ?: when (isOn) {
@@ -45,6 +55,8 @@ data class StoveState(
     val hasAlarm: Boolean get() = (alarm ?: 0) != 0
 
     companion object {
+        const val TURNING_OFF = 0x0103
+
         val STATE_LABELS = mapOf(
             0x0000 to "Off",
             0x0101 to "Cleaning",
@@ -54,7 +66,7 @@ data class StoveState(
             0x0501 to "Stabilization",
             0x0601 to "Anti-condensation",
             0x0202 to "On",
-            0x0103 to "Turning off",
+            TURNING_OFF to "Turning off",
         )
     }
 }

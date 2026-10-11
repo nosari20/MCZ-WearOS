@@ -9,10 +9,7 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothStatusCodes
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.util.Log
 import com.mczadvanced.wear.data.StoveException
 import com.mczadvanced.wear.data.StoveTransport
@@ -49,6 +46,9 @@ class StoveBleClient(private val context: Context, private val address: String) 
     @Volatile private var writeChar: BluetoothGattCharacteristic? = null
     @Volatile private var ready: CompletableDeferred<Boolean>? = null
     @Volatile private var writeDone: CompletableDeferred<Boolean>? = null
+    @Volatile private var linkUp = false
+
+    override val isConnected: Boolean get() = linkUp
 
     private val callback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
@@ -56,6 +56,7 @@ class StoveBleClient(private val context: Context, private val address: String) 
                 g.requestMtu(MTU)
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.i(TAG, "Disconnected (status $status)")
+                linkUp = false
                 ready?.complete(false)
                 writeDone?.complete(false)
                 replies.trySend(null)
@@ -111,20 +112,35 @@ class StoveBleClient(private val context: Context, private val address: String) 
             if (!adapter.isEnabled) throw StoveException("Bluetooth is off")
             val device = runCatching { adapter.getRemoteDevice(address) }.getOrNull()
                 ?: throw StoveException("Invalid stove address")
-            if (device.bondState == BluetoothDevice.BOND_NONE) bond(device)
-            drainReplies()
-            val done = CompletableDeferred<Boolean>().also { ready = it }
-            @Suppress("DEPRECATION") // deprecated in SDK 37; still the only call available down to minSdk 33
-            gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
-            val ok = withTimeoutOrNull(CONNECT_TIMEOUT_MS) { done.await() } ?: false
-            if (!ok) {
-                closeGatt()
-                throw StoveException("Stove unreachable")
+            if (device.bondState != BluetoothDevice.BOND_BONDED) {
+                // Bonding needs the stove panel in pairing mode, so it is only done from the pairing screen.
+                throw StoveException("Stove not paired: pair it again from the app")
             }
+            // Android often reports a transient failure (status 133/257) on the first attempt.
+            repeat(CONNECT_ATTEMPTS) { attempt ->
+                if (connectOnce(device)) return@withLock
+                Log.i(TAG, "Connect attempt ${attempt + 1} failed")
+            }
+            throw StoveException("Stove unreachable")
         } catch (e: SecurityException) {
             closeGatt()
             throw StoveException("Bluetooth permission missing")
+        } catch (e: Throwable) {
+            closeGatt()
+            throw e
         }
+    }
+
+    private suspend fun connectOnce(device: BluetoothDevice): Boolean {
+        closeGatt()
+        drainReplies()
+        val done = CompletableDeferred<Boolean>().also { ready = it }
+        @Suppress("DEPRECATION") // deprecated in SDK 37; still the only call available down to minSdk 33
+        gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
+        val ok = withTimeoutOrNull(CONNECT_TIMEOUT_MS) { done.await() } ?: false
+        linkUp = ok
+        if (!ok) closeGatt()
+        return ok
     }
 
     override suspend fun readRegisters(start: Int, count: Int): List<Int> = io.withLock {
@@ -173,31 +189,6 @@ class StoveBleClient(private val context: Context, private val address: String) 
         withTimeoutOrNull(WRITE_TIMEOUT_MS) { done.await() }
     }
 
-    /** "Just works" bonding; the stove display must be in pairing mode (press + and -). */
-    private suspend fun bond(device: BluetoothDevice) {
-        val result = CompletableDeferred<Int>()
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(c: Context, intent: Intent) {
-                val d = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-                if (d?.address != device.address) return
-                val state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.BOND_NONE)
-                if (state != BluetoothDevice.BOND_BONDING) result.complete(state)
-            }
-        }
-        context.registerReceiver(
-            receiver,
-            IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED),
-            Context.RECEIVER_EXPORTED,
-        )
-        try {
-            if (!device.createBond()) return
-            val state = withTimeoutOrNull(BOND_TIMEOUT_MS) { result.await() }
-            Log.i(TAG, "Bond result $state")
-        } finally {
-            context.unregisterReceiver(receiver)
-        }
-    }
-
     private fun closeGatt() {
         gatt?.let {
             runCatching { it.disconnect() }
@@ -205,15 +196,16 @@ class StoveBleClient(private val context: Context, private val address: String) 
         }
         gatt = null
         writeChar = null
+        linkUp = false
     }
 
     private companion object {
         const val TAG = "StoveBle"
         const val MTU = 517
-        const val CONNECT_TIMEOUT_MS = 15_000L
+        const val CONNECT_TIMEOUT_MS = 10_000L
         const val REPLY_TIMEOUT_MS = 3_000L
         const val WRITE_TIMEOUT_MS = 1_000L
-        const val BOND_TIMEOUT_MS = 30_000L
+        const val CONNECT_ATTEMPTS = 2
         val SERVICE: UUID = UUID.fromString("0000abf0-0000-1000-8000-00805f9b34fb")
         val WRITE_CHAR: UUID = UUID.fromString("0000abf1-0000-1000-8000-00805f9b34fb")
         val NOTIFY_CHAR: UUID = UUID.fromString("0000abf2-0000-1000-8000-00805f9b34fb")

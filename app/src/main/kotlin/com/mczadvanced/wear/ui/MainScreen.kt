@@ -46,9 +46,12 @@ fun MainScreen(
     val stove = ui.stove
     val listState = rememberScalingLazyListState()
 
+    // BLE work runs in the app scope: leaving the screen must not cancel it mid-exchange.
     LaunchedEffect(Unit) {
-        app.repository.loadCache()
-        app.repository.refresh()
+        app.appScope.launch {
+            app.repository.loadCache()
+            app.repository.refresh()
+        }
     }
 
     // Setpoint taps are batched: the write goes out 800 ms after the last tap.
@@ -56,7 +59,7 @@ fun MainScreen(
     LaunchedEffect(target) {
         val t = target ?: return@LaunchedEffect
         delay(800)
-        app.repository.setSetpoint(t)
+        app.appScope.launch { app.repository.setSetpoint(t) }.join()
         target = null
     }
     val shownSetpoint = target ?: stove.setpoint
@@ -86,7 +89,7 @@ fun MainScreen(
             item {
                 Button(
                     onClick = onPower,
-                    enabled = stove.isOn != null,
+                    enabled = stove.canToggle && !ui.busy,
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(if (stove.isOn == true) "Turn off" else "Turn on") },
                 )
@@ -148,6 +151,7 @@ fun MainScreen(
 private fun statusLine(ui: StoveUiState): String = when {
     ui.busy && ui.link == LinkStatus.CONNECTING -> "Connecting…"
     ui.busy -> "Updating…"
+    ui.error != null && ui.link != LinkStatus.UNREACHABLE -> ui.error
     ui.link == LinkStatus.UNREACHABLE -> "${ui.error ?: "Unreachable"} · ${formatAge(ui.updatedAt, System.currentTimeMillis())}"
     else -> "Updated ${formatAge(ui.updatedAt, System.currentTimeMillis())}"
 }

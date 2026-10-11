@@ -1,6 +1,7 @@
 package com.mczadvanced.wear.data
 
 import com.mczadvanced.wear.protocol.Registers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableSharedFlow
 
 class FakeTransport(val registers: MutableMap<Int, Int> = mutableMapOf()) : StoveTransport {
@@ -9,12 +10,17 @@ class FakeTransport(val registers: MutableMap<Int, Int> = mutableMapOf()) : Stov
     var connects = 0
     var closes = 0
     var failConnect = false
+    var hangConnect = false
     var failReads = false
+    var connected = false
     override val broadcasts = MutableSharedFlow<Map<Int, Int>>(extraBufferCapacity = 8)
+    override val isConnected: Boolean get() = connected
 
     override suspend fun connect() {
         connects++
+        if (hangConnect) awaitCancellation()
         if (failConnect) throw StoveException("Stove unreachable")
+        connected = true
     }
 
     override suspend fun readRegisters(start: Int, count: Int): List<Int> {
@@ -34,5 +40,6 @@ class FakeTransport(val registers: MutableMap<Int, Int> = mutableMapOf()) : Stov
 
     override suspend fun close() {
         closes++
+        connected = false
     }
 }
