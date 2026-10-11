@@ -7,3 +7,5 @@ local.properties
 captures/
 .superpowers/
 .claude/settings.local.json
+*.jks
+*.keystore

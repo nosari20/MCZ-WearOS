@@ -1,6 +1,6 @@
 # MCZ WearOS — project guide for Claude
 
-Standalone Wear OS app + Tile controlling an MCZ Maestro pellet stove over BLE
+"Stove Remote" (store title "Stove Remote for Wear OS"): standalone Wear OS app + Tile controlling an MCZ Maestro pellet stove over BLE
 (AES-128-CBC encrypted Modbus RTU). Single Gradle module `app`, package
 `com.mczadvanced.wear`. Design: `docs/design.md`. User docs: `README.md`.
 
@@ -10,6 +10,7 @@ Standalone Wear OS app + Tile controlling an MCZ Maestro pellet stove over BLE
 ./gradlew :app:testDebugUnitTest            # JVM unit tests (protocol + repository)
 ./gradlew :app:assembleDebug                # debug APK (has the Demo stove)
 ./gradlew :app:assembleRelease              # R8 build — the one to put on a real watch
+./gradlew :app:bundleRelease                # Play upload (.aab); see docs/google-play.md
 ```
 
 - Toolchain: AGP 9 (built-in Kotlin), Gradle 9.5, minSdk 33, compileSdk/targetSdk 37,
@@ -58,6 +59,13 @@ Keep `protocol` and `data` (except `Stores.kt`) free of Android APIs so they sta
 - The Maestro module drops links from unbonded devices about 70 ms after connecting.
 - Bonding only succeeds while the panel's Bluetooth icon blinks (+ and − pressed together).
 - MTU 517 is accepted; status block reads (51/77/20 registers) need it.
+
+## Google Play
+
+- Listing text/graphics: `fastlane/metadata/android/<locale>/` (en-US, fr-FR). Keep the
+  title free of trademarks; mention MCZ/Maestro only as compatibility, always "unofficial".
+- Upload key comes from `STOVE_UPLOAD_*` Gradle properties or env vars; never commit keys.
+- Bump `versionCode` and add `changelogs/<versionCode>.txt` for every upload.
 
 ## Repo hygiene
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">MCZ Advanced</string>
+    <string name="app_name">Stove Remote</string>
     <string name="tile_label">Stove</string>
     <string name="tile_description">Room temperature, state and on/off</string>
     <color name="launcher_background">#FF2B1A12</color>

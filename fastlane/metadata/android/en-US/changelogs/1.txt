@@ -1,0 +1,1 @@
+First release: room temperature, on/off with confirmation, setpoint, mode, power level, fan and a status tile.

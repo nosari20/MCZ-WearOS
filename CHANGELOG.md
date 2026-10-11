@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- App renamed "Stove Remote" on the watch (store title "Stove Remote for Wear OS").
+- Dependencies: AGP 9.4.1, Gradle 9.8.1, core-ktx 1.19.1, GitHub Actions updates.
+
+### Added
+- Google Play listing (en-US, fr-FR), privacy policy, upload-key signing for release bundles.
+
 ## [1.0.0] - 2026-10-11
 
 ### Added

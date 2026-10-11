@@ -1,0 +1,35 @@
+Stove Remote puts your MCZ Maestro pellet stove on your wrist. It talks to the stove directly over Bluetooth: no phone needed, no cloud account, no internet connection.
+
+WHAT YOU CAN DO
+• See the room temperature, the setpoint and what the stove is doing (off, cleaning, loading, ignition, stabilization, on, turning off)
+• Turn the stove on or off, always behind a confirmation screen
+• Change the setpoint in 0.5 °C steps
+• Pick the mode: Manual, Auto, Overnight, Comfort or Turbo
+• Set the power level (1 to 5) and the fan (1 to 5 or Auto)
+• See active alarms
+• Add the Stove tile to check the temperature with one swipe and turn the stove on or off
+
+BUILT FOR SAFETY
+• Every on/off goes through a confirmation screen
+• The stove state is read again right before switching it on or off, so a stale screen can never switch it the wrong way
+• The app refuses to switch while the stove is shutting down, and waits 60 seconds between two switches
+• The app never sends a command on its own: opening the app or the tile only reads values
+• The age of the displayed values is always shown
+
+PRIVATE BY DESIGN
+• Works fully offline over Bluetooth Low Energy
+• No account, no ads, no analytics, no data collection
+• The watch releases the Bluetooth link after 30 seconds so the official app can still connect
+
+REQUIREMENTS
+• Wear OS 4 or newer (Pixel Watch, Galaxy Watch 4 and later, and others)
+• An MCZ stove with the Maestro Bluetooth module
+
+FIRST PAIRING
+On the stove panel, press + and − together until the Bluetooth icon blinks, then pick your stove in the app. Pairing only works while the icon blinks.
+
+OPEN SOURCE
+Stove Remote is open source (Apache 2.0): https://github.com/nosari20/MCZ-WearOS
+
+DISCLAIMER
+This is an unofficial app. It is not affiliated with, endorsed by or supported by MCZ Group. MCZ and Maestro are trademarks of their respective owners and are used only to describe compatibility. The stove is a heating appliance: always follow its manual and never rely only on the watch to check that it is safe.

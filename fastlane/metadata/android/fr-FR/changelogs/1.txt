@@ -1,0 +1,1 @@
+Première version : température ambiante, marche/arrêt avec confirmation, consigne, mode, puissance, ventilation et une tuile d’état.

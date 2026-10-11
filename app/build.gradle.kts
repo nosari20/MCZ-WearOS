@@ -17,14 +17,31 @@ android {
         versionName = "1.0"
     }
 
+    // Play upload key, kept outside the repo: set these in ~/.gradle/gradle.properties or as
+    // environment variables. Without them, release builds use the local debug key (sideloading).
+    val uploadStoreFile = providers.gradleProperty("STOVE_UPLOAD_STORE_FILE")
+        .orElse(providers.environmentVariable("STOVE_UPLOAD_STORE_FILE")).orNull
+    signingConfigs {
+        if (uploadStoreFile != null) {
+            create("upload") {
+                storeFile = file(uploadStoreFile)
+                storePassword = providers.gradleProperty("STOVE_UPLOAD_STORE_PASSWORD")
+                    .orElse(providers.environmentVariable("STOVE_UPLOAD_STORE_PASSWORD")).get()
+                keyAlias = providers.gradleProperty("STOVE_UPLOAD_KEY_ALIAS")
+                    .orElse(providers.environmentVariable("STOVE_UPLOAD_KEY_ALIAS")).get()
+                keyPassword = providers.gradleProperty("STOVE_UPLOAD_KEY_PASSWORD")
+                    .orElse(providers.environmentVariable("STOVE_UPLOAD_KEY_PASSWORD")).get()
+            }
+        }
+    }
+
     buildTypes {
         release {
             // R8 + non-debuggable: Compose for Wear is noticeably laggy in debug builds.
             optimization {
                 enable = true
             }
-            // Sideloaded builds; replace with a real key before publishing to a store.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("upload") ?: signingConfigs.getByName("debug")
         }
     }
     compileOptions {

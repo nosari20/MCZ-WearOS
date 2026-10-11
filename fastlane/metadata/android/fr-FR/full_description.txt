@@ -1,0 +1,35 @@
+Stove Remote met votre poêle à granulés MCZ Maestro à votre poignet. L’application dialogue directement avec le poêle en Bluetooth : pas besoin de téléphone, ni de compte cloud, ni de connexion Internet.
+
+CE QUE VOUS POUVEZ FAIRE
+• Voir la température ambiante, la consigne et l’état du poêle (arrêt, nettoyage, chargement, allumage, stabilisation, en marche, extinction)
+• Allumer ou éteindre le poêle, toujours après un écran de confirmation
+• Modifier la consigne par pas de 0,5 °C
+• Choisir le mode : Manuel, Auto, Nuit, Confort ou Turbo
+• Régler la puissance (1 à 5) et la ventilation (1 à 5 ou Auto)
+• Voir les alarmes actives
+• Ajouter la tuile Poêle pour consulter la température d’un simple glissement et allumer ou éteindre le poêle
+
+PENSÉE POUR LA SÉCURITÉ
+• Chaque marche/arrêt passe par un écran de confirmation
+• L’état du poêle est relu juste avant l’allumage ou l’extinction : un écran pas à jour ne peut jamais l’inverser
+• L’application refuse d’agir pendant l’extinction et attend 60 secondes entre deux commandes marche/arrêt
+• L’application n’envoie jamais de commande d’elle-même : ouvrir l’application ou la tuile ne fait que lire les valeurs
+• L’ancienneté des valeurs affichées est toujours indiquée
+
+RESPECT DE LA VIE PRIVÉE
+• Fonctionne entièrement hors ligne en Bluetooth Low Energy
+• Aucun compte, aucune publicité, aucune statistique, aucune collecte de données
+• La montre libère la connexion Bluetooth après 30 secondes pour que l’application officielle puisse toujours se connecter
+
+CONFIGURATION REQUISE
+• Wear OS 4 ou plus récent (Pixel Watch, Galaxy Watch 4 et suivantes, etc.)
+• Un poêle MCZ équipé du module Bluetooth Maestro
+
+PREMIER APPAIRAGE
+Sur le panneau du poêle, appuyez simultanément sur + et − jusqu’à ce que l’icône Bluetooth clignote, puis choisissez votre poêle dans l’application. L’appairage ne fonctionne que pendant le clignotement.
+
+OPEN SOURCE
+Stove Remote est open source (Apache 2.0) : https://github.com/nosari20/MCZ-WearOS
+
+AVERTISSEMENT
+Application non officielle, sans lien avec MCZ Group, ni approuvée ni prise en charge par MCZ Group. MCZ et Maestro sont des marques de leurs propriétaires respectifs, citées uniquement pour indiquer la compatibilité. Le poêle est un appareil de chauffage : suivez toujours son manuel et ne vous fiez jamais uniquement à la montre pour vérifier qu’il fonctionne en sécurité.

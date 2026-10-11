@@ -3,7 +3,7 @@
 [![CI](https://github.com/nosari20/MCZ-WearOS/actions/workflows/ci.yml/badge.svg)](https://github.com/nosari20/MCZ-WearOS/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Standalone **Wear OS** app and **Tile** that control an **MCZ Maestro** pellet stove directly
+**Stove Remote** is a standalone **Wear OS** app and **Tile** that control an **MCZ Maestro** pellet stove directly
 over **Bluetooth Low Energy**. No phone, no MCZ cloud, no account.
 
 | Main | Controls | Confirm | Tile |
@@ -91,7 +91,9 @@ Code layout:
 | `ui` | Compose for Wear OS screens. |
 | `tile` | ProtoLayout Material 3 tile. |
 
-The design document is in [`docs/design.md`](docs/design.md).
+The design document is in [`docs/design.md`](docs/design.md). Google Play publishing
+steps and store listing assets: [`docs/google-play.md`](docs/google-play.md).
+Privacy policy: [`PRIVACY.md`](PRIVACY.md).
 
 ## Safety
 
