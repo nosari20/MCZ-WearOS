@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.util.Log
 import androidx.datastore.preferences.preferencesDataStore
+import com.mczadvanced.wear.ble.StoveBleClient
 import com.mczadvanced.wear.data.DataStoreStoveCache
 import com.mczadvanced.wear.data.DemoStoveTransport
 import com.mczadvanced.wear.data.SettingsStore
@@ -34,7 +35,7 @@ class StoveApp : Application() {
 
     private fun createTransport(address: String): StoveTransport = when (address) {
         DemoStoveTransport.ADDRESS -> DemoStoveTransport()
-        else -> DemoStoveTransport() // replaced by StoveBleClient in Task 8
+        else -> StoveBleClient(this, address)
     }
 
     companion object {
